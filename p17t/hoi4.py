@@ -3,40 +3,9 @@ import os
 import shutil
 import yaml
 from ast import literal_eval
+from .common import *
 
 # Get musics and their names
-
-
-def read_asset(file_path):
-    # Read Assert file to get music and its key
-    music_list = {}
-    with open(file_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith("name"):
-                n = ""
-                s = False
-                for i in line[5:]:
-                    if i == '"':
-                        if s:
-                            break
-                        s = True
-                    else:
-                        if s:
-                            n += i
-            elif line.startswith("file"):
-                f = ""
-                s = False
-                for i in line[5:]:
-                    if i == '"':
-                        if s:
-                            break
-                        s = True
-                    else:
-                        if s:
-                            f += i
-                music_list[n] = os.path.join(os.path.dirname(file_path), f)
-    return music_list
 
 
 def get_music_names(localisation_path, lang="english"):
@@ -45,44 +14,27 @@ def get_music_names(localisation_path, lang="english"):
     for f in os.listdir(localisation_path):
         if f.endswith(f"music_l_{lang}.yml"):
             with open(os.path.join(localisation_path, f), "r", encoding="utf-8") as f:
-                names.update(
-                    yaml.load(f.read(), Loader=yaml.FullLoader)[f"l_{lang}"])
+                if not yaml.safe_load(f.read()) is None:
+                    f.seek(0)
+                    if d := yaml.safe_load(f.read())[f"l_{lang}"]:
+                        names.update(d)
     return names
-
-
-def find_music(music_path):
-    # Find all music files in a directory
-    music_list = {}
-    for f in os.listdir(music_path):
-        if f.endswith(".asset") and "music" in f:
-            music_list.update(read_asset(os.path.join(music_path, f)))
-        elif os.path.isdir(p := os.path.join(music_path, f)):
-            music_list.update(find_music(p))
-    return music_list
 
 
 def find_all_music(music_path, *other):
     # Find all music files in the game
     music_list = {}
 
-    # Default music
+    # 默认音乐 Default music
     music_list.update(find_music(music_path))
 
-    for i in other:  # For DLC music
+    for i in other:  # DLC 音乐 For DLC music
         for f in os.listdir(i):
             if os.path.isdir(cf := os.path.join(i, f)):
                 for f_1 in os.listdir(cf):
                     if f_1 == "music":
                         music_list.update(find_music(os.path.join(i, f, f_1)))
     return music_list
-
-
-def match_names(music_list, names):
-    match = {}
-    for i in names:
-        if i in music_list:
-            match[music_list[i]] = names[i]
-    return match
 
 
 def copy_music(todir, game_path, lang, localisation, *music_path):
